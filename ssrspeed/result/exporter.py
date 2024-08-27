@@ -94,7 +94,7 @@ class ExportResult:
 
     @staticmethod
     def set_font(
-        name: str = "SourceHanSansCN-Medium.otf", size: int = 18
+            name: str = "SourceHanSansCN-Medium.otf", size: int = 18
     ) -> ImageFont.FreeTypeFont:
         font = ssrconfig["path"]["fonts"] + name
         custom_font = ssrconfig["path"]["custom"] + name
@@ -146,7 +146,7 @@ class ExportResult:
     def __get_base_pos(self, width: float, text: str) -> float:
         font = self.__font
         draw = ImageDraw.Draw(Image.new("RGB", (1, 1), (255, 255, 255)))
-        text_size = draw.textsize(text, font=font)[0]
+        text_size = draw.textlength(text, font=font)
         base_pos = (width - text_size) / 2
         logger.debug(f"Base Position {base_pos}")
         return base_pos
@@ -845,19 +845,19 @@ class ExportResult:
                 n_type = bool(netflix_type[:4] == "Full")
                 bl_type = bool(bilibili_type != "N/A")
                 sums = (
-                    n_type
-                    + hbo_type
-                    + disney_type
-                    + youtube_type
-                    + abema_type
-                    + bahamut_type
-                    + dazn_type
-                    + bl_type
-                    + tvb_type
+                        n_type
+                        + hbo_type
+                        + disney_type
+                        + youtube_type
+                        + abema_type
+                        + bahamut_type
+                        + dazn_type
+                        + bl_type
+                        + tvb_type
                 )
                 pos = (
-                    bilibili_right_position
-                    + (stream_right_position - bilibili_right_position - sums * 35) / 2
+                        bilibili_right_position
+                        + (stream_right_position - bilibili_right_position - sums * 35) / 2
                 )
                 if n_type:
                     result_img.paste(netflix_logo, (int(pos), 30 * j + 30 + 1))
@@ -962,13 +962,14 @@ class ExportResult:
         else:
             t2 = ""
 
-        with open(TEST_TXT, "a+", encoding="utf-8") as test:
-            test.seek(0)
-            url = test.readline()
+        with open(TEST_TXT, "r", encoding="utf-8") as f:
             try:
-                sum0 = int(test.readline())
-            except ValueError:
-                sum0 = 0
+                test_data = json.load(f)
+                url = test_data.get('url')
+                sum0 = test_data.get('used')
+            except Exception:
+                url, sum0 = url, sum0
+
         os.remove(TEST_TXT)
 
         if not self.__hide_speed:
@@ -977,8 +978,8 @@ class ExportResult:
             try:
                 r = requests.get(url, headers=clash_ua, timeout=15)
                 t = r.headers["subscription-userinfo"]
-                dl = int(t[t.find("download") + 9 : t.find("total") - 2])
-                sum_ = dl
+                values = {item.split('=')[0]: int(item.split('=')[1]) for item in t.split('; ')}
+                sum_ = values['upload'] + values['download']
             except Exception:
                 sum_ = 0
             avgrate = (sum_ - sum0) / total_traffic if total_traffic else 0
@@ -1047,7 +1048,7 @@ class ExportResult:
             width=1,
         )
         filename = (
-            RESULTS_DIR + time.strftime("%Y-%m-%d-%H-%M-%S", generated_time) + ".png"
+                RESULTS_DIR + time.strftime("%Y-%m-%d-%H-%M-%S", generated_time) + ".png"
         )
         result_img.save(filename)
         files.append(filename)
@@ -1108,7 +1109,7 @@ class ExportResult:
                 )
                 rgb2 = self.__colors[str(s)]
                 rt = (data - back_speed * 1024 * 1024) / (
-                    cur_speed - back_speed * 1024 * 1024
+                        cur_speed - back_speed * 1024 * 1024
                 )
                 logger.debug(
                     f"Speed : {data / 1024 / 1024}, RGB1 : {rgb1}, RGB2 : {rgb2}, RT : {rt}"
@@ -1119,11 +1120,11 @@ class ExportResult:
     @staticmethod
     def __export_as_json(result: list) -> list:
         filename = (
-            RESULTS_DIR + time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()) + ".json"
+                RESULTS_DIR + time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()) + ".json"
         )
         with open(filename, "w+", encoding="utf-8") as f:
             f.writelines(
-                json.dumps(result, sort_keys=True, indent=4, separators=(",", ":"))
+                json.dumps(result, sort_keys=True, indent=4, separators=(",", ":"), ensure_ascii=False)
             )
         logger.info(f"Result exported as {filename}")
         return result
