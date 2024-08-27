@@ -232,7 +232,7 @@ class SpeedTest:
             s.close()
 
     async def __fast_start_test(
-        self, _item, cfg, address, port, geo_ip_semaphore, **kwargs
+            self, _item, cfg, address, port, geo_ip_semaphore, **kwargs
     ):
         node_info = f"[{_item['group']}] - [{_item['remarks']}] "
         geoip_log = ""
@@ -250,9 +250,9 @@ class SpeedTest:
         task_list = []
 
         if (
-            kwargs.get("default", False)
-            and GEOIP_TEST
-            or kwargs.get("geoip_test", False)
+                kwargs.get("default", False)
+                and GEOIP_TEST
+                or kwargs.get("geoip_test", False)
         ):
             inbound_ip, inbound_geo_res, inbound_info = self.__geo_ip_inbound(cfg)
             (
@@ -276,9 +276,9 @@ class SpeedTest:
             _item["geoIP"]["outbound"]["info"] = outbound_info
 
         if (
-            kwargs.get("default", False)
-            and STREAM_TEST
-            or kwargs.get("stream_test", False)
+                kwargs.get("default", False)
+                and STREAM_TEST
+                or kwargs.get("stream_test", False)
         ):
             stream_task = asyncio.create_task(
                 st.start_stream_test(port, self.__stream_cfg, outbound_ip)
@@ -296,9 +296,9 @@ class SpeedTest:
             task_list.append(wps_task)
 
         if (
-            kwargs.get("default", False)
-            and SPEED_TEST
-            or kwargs.get("speed_test", False)
+                kwargs.get("default", False)
+                and SPEED_TEST
+                or kwargs.get("speed_test", False)
         ):
             speed_task = asyncio.create_task(
                 st.start_test(
@@ -389,7 +389,7 @@ class SpeedTest:
         )
 
     async def __base_start_test(
-        self, _item, cfg, address, port, geo_ip_semaphore, **kwargs
+            self, _item, cfg, address, port, geo_ip_semaphore, **kwargs
     ):
         node_info = f"[{_item['group']}] - [{_item['remarks']}] "
         geoip_log = ""
@@ -402,9 +402,9 @@ class SpeedTest:
         st = SpeedTestMethods()
 
         if (
-            kwargs.get("default", False)
-            and GEOIP_TEST
-            or kwargs.get("geoip_test", False)
+                kwargs.get("default", False)
+                and GEOIP_TEST
+                or kwargs.get("geoip_test", False)
         ):
             inbound_ip, inbound_geo_res, inbound_info = self.__geo_ip_inbound(cfg)
             (
@@ -428,17 +428,17 @@ class SpeedTest:
             _item["geoIP"]["outbound"]["info"] = outbound_info
 
         if (
-            kwargs.get("default", False)
-            and STREAM_TEST
-            or kwargs.get("stream_test", False)
+                kwargs.get("default", False)
+                and STREAM_TEST
+                or kwargs.get("stream_test", False)
         ):
             result = await st.start_stream_test(port, self.__stream_cfg, outbound_ip)
             _item.update(result)
 
         if (
-            kwargs.get("default", False)
-            and (PING_TEST or GOOGLE_PING_TEST)
-            or kwargs.get("ping_test", False)
+                kwargs.get("default", False)
+                and (PING_TEST or GOOGLE_PING_TEST)
+                or kwargs.get("ping_test", False)
         ):
             ping_res = await self.__ping(
                 cfg["server"], cfg["server_port"], address, port
@@ -466,9 +466,9 @@ class SpeedTest:
             _item["webPageSimulation"]["results"] = res
 
         if (
-            kwargs.get("default", False)
-            and SPEED_TEST
-            or kwargs.get("speed_test", False)
+                kwargs.get("default", False)
+                and SPEED_TEST
+                or kwargs.get("speed_test", False)
         ):
             test_res = await st.start_test(
                 address=address,
@@ -525,7 +525,7 @@ class SpeedTest:
         )
 
     async def __async__start_test(
-        self, node, dic, lock, port_queue, inner_method, geo_ip_semaphore, **kwargs
+            self, node, dic, lock, port_queue, inner_method, geo_ip_semaphore, **kwargs
     ):
         port = await port_queue.get()
         cfg = node.config
@@ -547,6 +547,10 @@ class SpeedTest:
         self.__current = _item
         cfg["server_port"] = int(cfg["server_port"])
         _item["port"] = cfg["server_port"]
+
+        if node.node_type in ['Vmess', 'Vless']:
+            cfg["inbounds"][0]["port"] = port
+
         await client.start_client(cfg, self.__debug)
 
         # Check clients started
@@ -558,7 +562,8 @@ class SpeedTest:
             else:
                 logger.error("Failed to start clients.")
                 return False
-        logger.info("Client started.")
+
+        logger.info(f"Client: {_item['remarks']} started on port: {port} with config file: {file_}.")
 
         # Check port
         if not await async_check_port(port):
