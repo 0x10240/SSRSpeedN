@@ -6,17 +6,19 @@ from typing import List, Optional, Union
 
 import requests
 from loguru import logger
+from datetime import datetime
 
 from ssrspeed.config import ssrconfig
 from ssrspeed.parser.clash import ClashParser
 from ssrspeed.parser.conf import (
     V2RayBaseConfigs,
     hysteria_get_config,
+    hysteria2_get_config,
     shadowsocks_get_config,
     trojan_get_config,
 )
 from ssrspeed.parser.filter import NodeFilter
-from ssrspeed.parser.hy import HysteriaParser
+from ssrspeed.parser.hy import HysteriaParser, Hysteria2Parser
 from ssrspeed.parser.ss import (
     ParserShadowsocksBasic,
     ParserShadowsocksD,
@@ -31,6 +33,7 @@ from ssrspeed.parser.v2ray import (
 )
 from ssrspeed.type.node import (
     NodeHysteria,
+    NodeHysteria2,
     NodeShadowsocks,
     NodeShadowsocksR,
     NodeTrojan,
@@ -39,12 +42,18 @@ from ssrspeed.type.node import (
 )
 from ssrspeed.util import b64plus
 
-PROXY_SETTINGS = ssrconfig["proxy"]
-LOCAL_ADDRESS = ssrconfig["localAddress"]
-LOCAL_PORT = ssrconfig["localPort"]
+PROXY_SETTINGS = ssrconfig.get("proxy", {
+    "enabled": False,
+    "address": "127.0.0.1",
+    "port": 10808,
+    "username": None,
+    "password": None
+})
+LOCAL_ADDRESS = ssrconfig.get("localAddress", "127.0.0.1")
+LOCAL_PORT = ssrconfig.get("localPort", 10870)
 TIMEOUT = 10
 
-TMP_DIR = ssrconfig["path"]["tmp"]
+TMP_DIR = ssrconfig.get("path", {}).get("tmp", os.path.abspath(os.path.join(os.path.dirname(__file__), '../data/tmp/')))
 if not os.path.exists(TMP_DIR):
     os.makedirs(TMP_DIR)
 TEST_TXT = f"{TMP_DIR}test.txt"
@@ -59,10 +68,11 @@ class UniversalParser:
 
     @staticmethod
     def web_config_to_node(
-        configs: List[dict],
+            configs: List[dict],
     ) -> List[
         Union[
             Optional[NodeHysteria],
+            Optional[NodeHysteria2],
             Optional[NodeShadowsocks],
             Optional[NodeShadowsocksR],
             Optional[NodeVless],
@@ -85,6 +95,8 @@ class UniversalParser:
                 result.append(NodeTrojan(_config["config"]))
             elif _type == "Hysteria":
                 result.append(NodeHysteria(_config["config"]))
+            elif _type == "Hysteria2":
+                result.append(NodeHysteria2(_config["config"]))
             else:
                 logger.warning(f"Unknown node type: {_type}")
         return result
@@ -112,7 +124,7 @@ class UniversalParser:
             self.__nodes.append(node)
 
     def parse_links(
-        self, links: list
+            self, links: list
     ) -> List[
         Union[
             Optional[NodeShadowsocks],
@@ -127,6 +139,10 @@ class UniversalParser:
         result: list = []
         for link in links:
             link = link.replace("\r", "")
+
+            if not link:
+                continue
+
             node: Union[
                 Optional[NodeShadowsocks],
                 Optional[NodeShadowsocksR],
@@ -134,9 +150,10 @@ class UniversalParser:
                 Optional[NodeVmess],
                 Optional[NodeTrojan],
                 Optional[NodeHysteria],
+                Optional[NodeHysteria2],
             ] = None
 
-            if link[:5] == "ss://":
+            if link.startswith("ss://"):
                 # Shadowsocks
                 cfg = None
                 try:
@@ -150,7 +167,7 @@ class UniversalParser:
                 else:
                     logger.warning(f"Invalid shadowsocks link {link}")
 
-            elif link[:6] == "ssr://":
+            elif link.startswith("ssr://"):
                 # ShadowsocksR
                 pssr = ParserShadowsocksR(self.__get_ss_base_config())
                 if cfg := pssr.parse_single_link(link):
@@ -158,7 +175,7 @@ class UniversalParser:
                 else:
                     logger.warning(f"Invalid shadowsocksR link {link}")
 
-            elif link[:8] == "vless://":
+            elif link.startswith("vless://"):
                 # Vless
                 pvless = ParserV2RayVless()
                 if cfg := pvless.parse_subs_config(link):
@@ -169,7 +186,7 @@ class UniversalParser:
                 else:
                     logger.warning(f"Invalid vless link {link}")
 
-            elif link[:8] == "vmess://":
+            elif link.startswith("vmess://"):
                 # Vmess link (V2RayN and Quan)
                 # V2RayN Parser
                 cfg = None
@@ -191,8 +208,7 @@ class UniversalParser:
                     )
                     node = NodeVmess(gen_cfg)
 
-            elif link[:9] == "trojan://":
-                cfg = None
+            elif link.startswith("trojan://"):
                 logger.info("Try Trojan Parser.")
                 ptrojan = TrojanParser(trojan_get_config(LOCAL_ADDRESS, LOCAL_PORT))
                 with contextlib.suppress(ValueError):
@@ -200,14 +216,21 @@ class UniversalParser:
                 if cfg:
                     node = NodeTrojan(cfg)
 
-            elif link[:11] == "hysteria://":
-                cfg = None
+            elif link.startswith("hysteria://"):
                 logger.info("Try Hysteria Parser.")
                 ph = HysteriaParser(hysteria_get_config(LOCAL_ADDRESS, LOCAL_PORT))
                 with contextlib.suppress(ValueError):
                     cfg = ph.parse_single_link(link)
                 if cfg:
                     node = NodeHysteria(cfg)
+
+            elif link.startswith("hysteria2://"):
+                logger.info("Try Hysteria2 Parser.")
+                ph = Hysteria2Parser(hysteria2_get_config(LOCAL_ADDRESS, LOCAL_PORT))
+                with contextlib.suppress(ValueError):
+                    cfg = ph.parse_single_link(link)
+                if cfg:
+                    node = NodeHysteria2(cfg)
 
             else:
                 logger.warning(f"Unsupported link: {link}")
@@ -271,21 +294,29 @@ class UniversalParser:
         for item in self.nodes:
             logger.info(f'{item.config["group"]} - {item.config["remarks"]}')
 
+    def read_subscription_trafic(self, t):
+        values = {item.split('=')[0]: int(item.split('=')[1]) for item in t.split('; ')}
+        total = values['total']
+        used = values['upload'] + values['download']
+        expire_time = datetime.utcfromtimestamp(values['expire']).strftime('%Y-%m-%d %H:%M:%S')
+        return total, used, expire_time
+
     def read_subscription(self, urls: list):
         for url in urls:
             if not url:
                 continue
 
             if any(
-                url.startswith(x)
-                for x in [
-                    "ss://",
-                    "ssr://",
-                    "vless://",
-                    "vmess://",
-                    "trojan://",
-                    "hysteria://",
-                ]
+                    url.startswith(x)
+                    for x in [
+                        "ss://",
+                        "ssr://",
+                        "vless://",
+                        "vmess://",
+                        "trojan://",
+                        "hysteria://",
+                        "hysteria2://",
+                    ]
             ):
                 self.__nodes.extend(self.parse_links([url]))
                 continue
@@ -293,21 +324,24 @@ class UniversalParser:
             logger.info(f"Reading {url}")
             header = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
+                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
             }
             clash_ua = {"User-Agent": "Clash"}
 
             try:
                 r = requests.get(url, headers=clash_ua, timeout=15)
                 t = r.headers["subscription-userinfo"]
-                dl = int(t[t.find("download") + 9 : t.find("total") - 2])
+                dl = int(t[t.find("download") + 9: t.find("total") - 2])
                 _sum = dl
+                total, used, expire = self.read_subscription_trafic(t)
+                total_gb = round(total / (1024 ** 3), 1)
+                used_gb = round(used / (1024 ** 3), 1)
+                logger.info(f'Total: {total_gb} GB, Used: {used_gb} GB, Expire Time: {expire}')
             except Exception:
-                _sum = 0
+                total, used, expire = 0, 0, ''
 
-            with open(TEST_TXT, "a+", encoding="utf-8") as test:
-                test.write(f"{url}\n")
-                test.write(f"{_sum}\n")
+            with open(TEST_TXT, "w", encoding="utf-8") as f:
+                json.dump({'url': url, 'total': total, 'used': used, 'expire': expire}, f)
 
             if PROXY_SETTINGS["enabled"]:
                 auth = ""
@@ -350,6 +384,7 @@ class UniversalParser:
 
             # Try Clash Parser
             self.__nodes.extend(self.__parse_clash(res))
+        return self.__nodes
 
     def read_gui_config(self, filename: str):
         with open(filename, "r", encoding="utf-8") as f:
@@ -360,9 +395,9 @@ class UniversalParser:
             # Identification of proxy type
             # Shadowsocks(D)
             if (
-                "subscriptions" in data
-                or "serverSubscribes" not in data
-                and "vmess" not in data
+                    "subscriptions" in data
+                    or "serverSubscribes" not in data
+                    and "vmess" not in data
             ):
                 pssb = ParserShadowsocksBasic(self.__get_ss_base_config())
                 for cfg in pssb.parse_gui_data(data):
@@ -387,3 +422,11 @@ class UniversalParser:
         except json.JSONDecodeError:
             # Try Load as Yaml
             self.__nodes = self.__parse_clash(raw_data)
+
+
+if __name__ == '__main__':
+    parser: UniversalParser = UniversalParser()
+    nodes = parser.read_subscription([''])
+
+    for node in nodes:
+        print(node.config)

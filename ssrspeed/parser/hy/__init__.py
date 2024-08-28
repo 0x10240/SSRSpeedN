@@ -1,3 +1,3 @@
-from .hparser import HysteriaParser
+from .hparser import HysteriaParser, Hysteria2Parser
 
-__all__ = ["HysteriaParser"]
+__all__ = ["HysteriaParser","Hysteria2Parser"]

@@ -28,6 +28,7 @@ import sys
 import threading
 import timeit
 import xml.parsers.expat
+from urllib.parse import unquote
 
 try:
     import gzip
@@ -1160,6 +1161,8 @@ class Speedtest(object):
 
         self.get_config()
         if config is not None:
+            if "remarks" in config:
+                config["remarks"] = unquote(config["remarks"])
             self.config.update(config)
 
         self.servers = {}

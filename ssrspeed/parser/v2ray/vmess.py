@@ -28,8 +28,7 @@ class ParserV2RayVmess:
             uuid = _conf["id"]
             aid = int(_conf["aid"])
             net = _conf["net"]
-            host = ""
-            path = ""
+
             if cfg_version == "2":
                 host = _conf.get(
                     "host", ""

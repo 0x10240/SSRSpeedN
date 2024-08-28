@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Flask, redirect, request  # ,render_template
+from flask import Flask, redirect, request, render_template
 from flask_cors import CORS
 from loguru import logger
 from werkzeug.utils import secure_filename
@@ -21,24 +21,9 @@ def check_file_allowed(filename):
 def server_method(app, sc):
     @app.route("/", methods=["GET"])
     def index():
-        return redirect("https://web1.ospf.in/", 301)
-
-    """
-    {
-        "proxyType": "SSR",      // [SSR, SSR-C#, SS, V2RAY]
-        "testMethod": "SOCKET",  // [SOCKET, SPEED_TEST_NET, FAST]
-        "testMode": "",          // [ALL, TCP_PING, WEB_PAGE_SIMULATION]
-        "subscriptionUrl": "",
-        "colors": "origin",
-        "sortMethod": "",        // [SPEED, REVERSE_SPEED, PING, REVERSE_PING]
-        "include": [],
-        "includeGroup": [],
-        "includeRemark": [],
-        "exclude": [],
-        "excludeGroup": [],
-        "excludeRemark": []
-    }
-    """
+        return render_template(
+            "index.html"
+            )
 
     @app.route("/getversion", methods=["GET"])
     def get_version():

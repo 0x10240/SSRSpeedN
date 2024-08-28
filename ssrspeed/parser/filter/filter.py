@@ -37,8 +37,8 @@ class NodeFilter:
         for node in nodes:
             d = node.config
             if (
-                d.get("server", ""),
-                d.get("server_port", d.get("port", 0)),
+                    d.get("server", ""),
+                    d.get("server_port", d.get("port", 0)),
             ) not in existing_dicts:
                 existing_dicts.add(
                     (d.get("server", ""), d.get("server_port", d.get("port", 0)))
@@ -90,5 +90,5 @@ class NodeFilter:
         self.__node_list = [
             n
             for n in self.__node_list
-            if all(kw not in n.config["remarks"] for kw in erkwl)
+            if all(kw not in str(n.config["remarks"]) for kw in erkwl)
         ]

@@ -12,6 +12,7 @@ from loguru import logger
 from ssrspeed.config import ssrconfig
 from ssrspeed.launcher import (
     HysteriaClient,
+    Hysteria2Client,
     ShadowsocksClient,
     ShadowsocksRClient,
     TrojanClient,
@@ -121,6 +122,8 @@ class SpeedTest:
             client = TrojanClient(CLIENTS_DIR, file)
         elif node_type == "Hysteria":
             client = HysteriaClient(CLIENTS_DIR, file)
+        elif node_type == "Hysteria2":
+            client = Hysteria2Client(CLIENTS_DIR, file)
 
         return client
 
@@ -215,8 +218,12 @@ class SpeedTest:
         sport = ssrconfig["ntt"]["internal_port"]
         try:
             logger.info("Performing UDP NAT Type Test.")
+            source_ip = ssrconfig["ntt"]["internal_ip"]
+            if isinstance(source_ip, bytes):
+                source_ip = source_ip.decode('utf-8')  # 确保 source_ip 是字符串类型
+
             t, eip, eport, sip = get_ip_info(
-                source_ip=ssrconfig["ntt"]["internal_ip"],
+                source_ip=source_ip,
                 source_port=sport,
                 include_internal=True,
                 sock=s,
@@ -550,6 +557,9 @@ class SpeedTest:
 
         if node.node_type in ['Vmess', 'Vless']:
             cfg["inbounds"][0]["port"] = port
+
+        if node.node_type in ["Hysteria", "Hysteria2"]:
+            cfg["socks5"]["listen"] = f"{LOCAL_ADDRESS}:{port}"
 
         await client.start_client(cfg, self.__debug)
 

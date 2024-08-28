@@ -1,5 +1,5 @@
 from copy import deepcopy
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import parse_qsl, urlparse, unquote
 
 from loguru import logger
 
@@ -38,6 +38,27 @@ class HysteriaParser(BottomParser):
             _config["remarks"] = url.fragment or "N/A"
         except Exception:
             logger.exception(f"Invalid hysteria URL : {link}")
+        return _config
+
+
+class Hysteria2Parser(BottomParser):
+    def __init__(self, base_config: dict):
+        super().__init__()
+        self.__base_config: dict = base_config
+
+    def _parse_link(self, link: str) -> dict:
+        link = link.strip()
+        _config = self.__base_config
+
+        try:
+            url = urlparse(link)
+            _config["server"] = link
+            _config["hy_server"] = url.hostname
+            _config["server_port"] = url.port
+            _config["remarks"] = unquote(url.fragment) or "N/A"
+        except Exception:
+            logger.exception(f"{link} is not a valid hysteria URL")
+
         return _config
 
 
