@@ -11,3 +11,4 @@ selenium==4.4.3
 tqdm
 unidecode
 webdriver-manager
+emoji==1.7.0
