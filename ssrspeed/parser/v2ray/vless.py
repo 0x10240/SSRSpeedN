@@ -19,10 +19,10 @@ class ParserV2RayVless:
             uuid = netloc.split("@")[0]
             host = query.get("host", "")
             path = query.get("path", "")
-            tls = query["security"]  # TLS or XTLS
-            tls_host = query["sni"]
-            alpn = query.get("alpn")
-            service_name = query.get("serviceName")
+            tls = query.get("security", "tls")  # TLS or XTLS
+            tls_host = query.get("sni", "")
+            alpn = query.get("alpn", "")
+            service_name = query.get("serviceName", "")
             flow = query.get("flow", "")
             if PLATFORM != "Linux" and "splice" in flow:
                 logger.warning("Flow xtls-rprx-splice is only supported on Linux.")

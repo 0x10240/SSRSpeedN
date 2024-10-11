@@ -21,19 +21,6 @@ LOGOS_DIR = ssrconfig["path"]["logos"]
 RESULTS_DIR = ssrconfig["path"]["results"]
 TEMPLATES_DIR = ssrconfig["path"]["templates"]
 
-"""
-resultJson
-    {
-        "group":"GroupName",
-        "remarks":"Remarks",
-        "loss":0,  # Data loss (0-1)
-        "ping":0.014,
-        "gping":0.011,
-        "dspeed":12435646  # Bytes
-        "maxDSpeed":12435646  # Bytes
-    }
-"""
-
 
 class ExportResult:
     def __init__(self):
@@ -962,15 +949,16 @@ class ExportResult:
         else:
             t2 = ""
 
-        with open(TEST_TXT, "r", encoding="utf-8") as f:
-            try:
+        try:
+            with open(TEST_TXT, "r", encoding="utf-8") as f:
                 test_data = json.load(f)
                 url = test_data.get('url')
                 sum0 = test_data.get('used')
-            except Exception:
-                url, sum0 = url, sum0
+        except Exception:
+            url, sum0 = '', 0
 
-        os.remove(TEST_TXT)
+        if os.path.exists:
+            os.remove(TEST_TXT)
 
         if not self.__hide_speed:
             clash_ua = {"User-Agent": "Clash"}

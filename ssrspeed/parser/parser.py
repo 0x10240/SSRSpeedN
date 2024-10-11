@@ -241,12 +241,14 @@ class UniversalParser:
         return result
 
     @staticmethod
-    def __parse_clash(clash_cfg: str) -> list:
+    def __parse_clash(clash_cfg: Optional[Union[str, dict]]) -> list:
         result: list = []
         ss_base_config = shadowsocks_get_config(LOCAL_ADDRESS, LOCAL_PORT, TIMEOUT)
         trojan_base_config = trojan_get_config(LOCAL_ADDRESS, LOCAL_PORT)
         hysteria_base_config = hysteria_get_config(LOCAL_ADDRESS, LOCAL_PORT)
-        pc = ClashParser(ss_base_config, trojan_base_config, hysteria_base_config)
+        hysteria2_base_config = hysteria2_get_config(LOCAL_ADDRESS, LOCAL_PORT)
+
+        pc = ClashParser(ss_base_config, trojan_base_config, hysteria_base_config, hysteria2_base_config)
         pc.parse_config(clash_cfg)
         cfgs = pc.config_list
         for cfg in cfgs:
@@ -274,6 +276,8 @@ class UniversalParser:
                 result.append(NodeTrojan(cfg["config"]))
             elif cfg["type"] == "hysteria":
                 result.append(NodeHysteria(cfg["config"]))
+            elif cfg["type"] == "hysteria2":
+                result.append(NodeHysteria2(cfg["config"]))
 
         return result
 
@@ -326,7 +330,7 @@ class UniversalParser:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
             }
-            clash_ua = {"User-Agent": "Clash"}
+            clash_ua = {"User-Agent": "clash.meta"}
 
             try:
                 r = requests.get(url, headers=clash_ua, timeout=15)
@@ -422,6 +426,9 @@ class UniversalParser:
         except json.JSONDecodeError:
             # Try Load as Yaml
             self.__nodes = self.__parse_clash(raw_data)
+
+    def parse_clash(self, clash_cfg):
+        self.__nodes = self.__parse_clash(clash_cfg)
 
 
 if __name__ == '__main__':

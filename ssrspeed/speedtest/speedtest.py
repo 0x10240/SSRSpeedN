@@ -216,6 +216,7 @@ class SpeedTest:
         s = socks.socksocket(type=socket.SOCK_DGRAM)
         s.set_proxy(socks.PROXY_TYPE_SOCKS5, LOCAL_ADDRESS, port)
         sport = ssrconfig["ntt"]["internal_port"]
+
         try:
             logger.info("Performing UDP NAT Type Test.")
             source_ip = ssrconfig["ntt"]["internal_ip"]
@@ -230,7 +231,7 @@ class SpeedTest:
             )
             return t, eip, eport, sip, sport
         except (socket.gaierror, TypeError, ConnectionError) as e:
-            logger.error(f"NAT Type Test: {repr(e)}")
+            logger.exception(f"NAT Type Test: {repr(e)}")
             return None, None, None, None, None
         except Exception:
             logger.exception("NAT Type Test: ")
@@ -548,12 +549,14 @@ class SpeedTest:
         if not client:
             logger.warning(f"Unknown Node Type: {node.node_type}.")
             return False
+
         _item = self.__get_base_result()
         _item["group"] = cfg["group"]
         _item["remarks"] = cfg["remarks"]
         self.__current = _item
         cfg["server_port"] = int(cfg["server_port"])
         _item["port"] = cfg["server_port"]
+        _item["server"] = cfg["server"]
 
         if node.node_type in ['Vmess', 'Vless']:
             cfg["inbounds"][0]["port"] = port
@@ -601,8 +604,9 @@ class SpeedTest:
         geo_ip_semaphore = asyncio.Semaphore()
         port_queue = asyncio.Queue()
         dic = {"done_nodes": 0, "total_nodes": len(self.__configs)}
+
         # 根据配置文件是否选择极速模式
-        fast_method = self.__fast_start_test if FAST_SPEED else self.__base_start_test
+        test_method = self.__fast_start_test if FAST_SPEED else self.__base_start_test
 
         # 初始化端口范围
         for i in range(LOCAL_PORT, LOCAL_PORT + self.__connection):
@@ -612,7 +616,7 @@ class SpeedTest:
         task_list = [
             asyncio.create_task(
                 self.__async__start_test(
-                    node, dic, lock, port_queue, fast_method, geo_ip_semaphore, **kwargs
+                    node, dic, lock, port_queue, test_method, geo_ip_semaphore, **kwargs
                 )
             )
             for node in self.__configs
@@ -625,7 +629,9 @@ class SpeedTest:
         self.load_geo_info()
         if os.name == "nt":
             asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        loop = asyncio.get_event_loop()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         loop.run_until_complete(self.__run(**kwargs))
         loop.close()
         self.__current = {}

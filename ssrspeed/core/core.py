@@ -66,13 +66,14 @@ class SSRSpeedCore:
 
     # Console Methods
     def console_setup(
-        self,
-        test_mode: str,
-        test_method: str,
-        color: str = "origin",
-        sort_method: str = "",
-        url: str = "",
-        cfg_filename: str = "",
+            self,
+            test_mode: str,
+            test_method: str,
+            color: str = "origin",
+            sort_method: str = "",
+            url: str = "",
+            cfg_filename: str = "",
+            clash_cfg=None,
     ):
         self.test_method = test_method
         self.test_mode = test_mode
@@ -80,9 +81,11 @@ class SSRSpeedCore:
         self.colors = color
         if self.__parser:
             if url:
-                self.__parser.read_subscription(url.split(" "))
+                self.__parser.read_subscription(url.split())
             elif cfg_filename:
                 self.__parser.read_gui_config(cfg_filename)
+            elif clash_cfg:
+                self.__parser.parse_clash(clash_cfg)
             else:
                 raise ValueError("Subscription URL or configuration file must be set!")
 
@@ -168,3 +171,22 @@ class SSRSpeedCore:
         er.set_colors(self.colors)
         er.get_test_method(self.test_method)
         er.export(self.__results, export_type, self.sort_method)
+
+    def start_test_api(self, args):
+        self.__time_stamp_start = time.time()
+        self.__stc = SpeedTest(args, self.__parser, self.test_method)
+        self.__status = "running"
+
+        if self.test_mode == "DEFAULT":
+            self.__stc.default_test()
+        elif self.test_mode == "TCP_PING":
+            self.__stc.ping_only()
+        elif self.test_mode == "STREAM":
+            self.__stc.stream_only()
+        elif self.test_mode == "ALL":
+            self.__stc.full_test()
+        elif self.test_mode == "WEB_PAGE_SIMULATION":
+            self.__stc.web_page_simulation()
+
+        self.__status = "stopped"
+        return self.__stc.get_result()

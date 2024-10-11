@@ -185,7 +185,7 @@ class V2RayBaseConfigs:
             stream_settings["quicSettings"] = quic_settings
         elif config["network"] == "grpc":
             grpc_settings = V2RayBaseConfigs.get_grpc_object()
-            grpc_settings["serviceName"] = config["serviceName"]
+            grpc_settings["serviceName"] = config.get("serviceName", "")
             stream_settings["grpcSettings"] = grpc_settings
 
         stream_settings["security"] = config["tls"]

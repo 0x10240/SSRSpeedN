@@ -178,7 +178,6 @@ def download(download_type, platform, client_path, database_path, version_path):
     _ = os.sep
     file_info = []
     version_info = {}
-    proxy = "https://ghproxy.com/"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"
@@ -192,7 +191,7 @@ def download(download_type, platform, client_path, database_path, version_path):
         version_info[url_info["type"]] = response["id"]
         file_info.extend(
             {
-                "url": f"{proxy}{each['browser_download_url']}",
+                "url": f"{each['browser_download_url']}",
                 "types": url_info["type"],
                 "name": each["name"],
                 "size": each["size"],

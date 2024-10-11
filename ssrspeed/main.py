@@ -228,7 +228,6 @@ def main():
         )
 
         sc.clean_result()
-
         sc.start_test(args)
 
 

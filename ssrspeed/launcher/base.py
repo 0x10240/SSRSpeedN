@@ -22,7 +22,7 @@ class BaseClient:
         self._cmd: Dict[str, List[str]] = {}
 
     async def start_client(self, config: Dict[str, Any], debug: bool = False):
-        self._config_str = json.dumps(config)
+        self._config_str = json.dumps(config, indent=2)
         async with aiofiles.open(self._config_file, "w+", encoding="utf-8") as f:
             await f.write(self._config_str)
 

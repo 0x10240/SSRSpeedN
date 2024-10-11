@@ -1,13 +1,16 @@
 import json
 import os
 import sys
+import platform
+
+operating_system = platform.system().lower()
 
 _ = os.sep
 CURRENT_PATH = os.path.dirname(__file__) + _
 ROOT_PATH = _.join(os.path.realpath(__file__).split(_)[:-3]) + _
 JSON_PATH = f"{CURRENT_PATH}paths.json"
 SSR_PATH = _.join(CURRENT_PATH.split(_)[:-2]) + _
-WD_PATH = os.getcwd() + _
+WD_PATH = SSR_PATH
 
 INNER_PATH = {
     "ssrspeed": f"{SSR_PATH}",
@@ -30,7 +33,7 @@ def get_path_json(work_path: str = WD_PATH) -> dict:
         "config.json": f"{work_dir}data{_}tmp{_}config.json",
         "ssrspeed.json": f"{work_dir}data{_}ssrspeed.json",
         "resources": f"{work_dir}resources{_}",
-        "clients": f"{work_dir}resources{_}clients{_}",
+        "clients": f"{work_dir}resources{_}clients-{operating_system}{_}",
         "databases": f"{work_dir}resources{_}databases{_}",
         "custom": f"{work_dir}resources{_}custom{_}",
         "resources.json": f"{work_dir}resources{_}resources.json",

@@ -4,14 +4,16 @@ import yaml
 from loguru import logger
 
 from ssrspeed.util.system import PLATFORM
+from ssrspeed.util import b64plus
 
 
 class ClashParser:
-    def __init__(self, ss_config, trojan_config, hysteria_config):
+    def __init__(self, ss_config, trojan_config, hysteria_config, hysteria2_base_config):
         self.__config_list: list = []
         self.__ss_base_config = ss_config
         self.__trojan_base_config = trojan_config
         self.__hysteria_base_config = hysteria_config
+        self.__hysteria2_base_config = hysteria2_base_config
 
     @property
     def config_list(self) -> list:
@@ -25,6 +27,9 @@ class ClashParser:
 
     def __get_hysteria_base_config(self) -> dict:
         return deepcopy(self.__hysteria_base_config)
+
+    def __get_hysteria2_base_config(self) -> dict:
+        return deepcopy(self.__hysteria2_base_config)
 
     def __parse_shadowsocks(self, cfg: dict) -> dict:
         _config = self.__get_ss_base_config()
@@ -189,7 +194,7 @@ class ClashParser:
         _config["remote_port"] = port
         _config["server_port"] = port
         _config["password"] = [cfg["password"]]
-        _config["ssl"]["verify"] = bool(cfg.get("skip-cert-verify", False))
+        _config["ssl"]["verify"] = not bool(cfg.get("skip-cert-verify", True))
         _config["ssl"]["sni"] = cfg.get("sni", "")
         _config["remarks"] = cfg.get("name", server)
         _config["group"] = cfg.get("peer", "N/A")
@@ -214,8 +219,46 @@ class ClashParser:
         _config["remarks"] = cfg.get("name", server)
         return _config
 
+    def __parse_hysteria2(self, cfg: dict) -> dict:
+        logger.debug(cfg)
+
+        _config = self.__get_hysteria2_base_config()
+        server = cfg["server"]
+        port = int(cfg["port"])
+
+        _config["server"] = f"{server}:{port}"
+        _config["hy_server"] = server
+        _config["server_port"] = port
+        _config["up_mbps"] = int(cfg.get("up", 12))
+        _config["down_mbps"] = int(cfg.get("down", 62))
+        _config["auth"] = cfg.get("password")
+
+        _config["transport"] = {
+            "type": cfg.get("protocol", "udp")
+        }
+
+        if cfg.get("obfs", False):
+            _config["obfs"] = {
+                'type': cfg.get("obfs"),
+                'salamander': {
+                    'password': b64plus.decode(cfg.get("obfs-password")),
+                }
+            }
+
+        _config["tls"] = {
+            "insecure": cfg.get("skip-cert-verify", True)
+        }
+
+        if cfg.get("sni", False):
+            _config["tls"]["sni"] = cfg.get("sni")
+
+        _config["remarks"] = cfg.get("name", server)
+        return _config
+
     def parse_config(self, clash_cfg):
-        clash_cfg = yaml.load(clash_cfg, Loader=yaml.FullLoader)
+        if isinstance(clash_cfg, str):
+            clash_cfg = yaml.load(clash_cfg, Loader=yaml.FullLoader)
+
         for cfg in clash_cfg["proxies"]:
             _type = cfg.get("type", "N/A").lower()
             if _type in "ss":
@@ -230,6 +273,8 @@ class ClashParser:
                 ret = self.__parse_trojan(cfg)
             elif _type == "hysteria":
                 ret = self.__parse_hysteria(cfg)
+            elif _type == 'hysteria2':
+                ret = self.__parse_hysteria2(cfg)
             else:
                 logger.error(f"Unsupported type {_type}.")
                 continue
